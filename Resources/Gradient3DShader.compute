@@ -1,0 +1,66 @@
+﻿// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel Gradient3DShader
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+StructuredBuffer<int> DiscretizedGraph;
+StructuredBuffer<float> Density;
+RWStructuredBuffer<float> GradientArray;
+uint dimension;
+
+[numthreads(10, 10, 10)]
+void Gradient3DShader(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x < dimension && id.y < dimension && id.z < dimension)
+    {
+        //the gradient is computed using the finite difference method
+        //it is necessary to take the edges into account along each dimension which explains the number of possible cases
+        if (DiscretizedGraph[id.x * dimension * dimension + id.y * dimension + id.z] != 0)
+        {
+            float xGradient = 0;
+            float yGradient = 0;
+            float zGradient = 0;
+            if (id.x > 0 && id.x < dimension - 1)
+            {
+                xGradient = (Density[(id.x + 1) * dimension * dimension + id.y * dimension + id.z] - Density[(id.x - 1) * dimension * dimension + id.y * dimension + id.z]) / 2.0;
+            }
+            else if (id.x == 0)
+            {
+                xGradient = Density[(id.x + 1) * dimension * dimension + id.y * dimension + id.z] - Density[id.x * dimension * dimension + id.y * dimension + id.z];
+            }
+            else if (id.x == dimension - 1)
+            {
+                xGradient = Density[id.x * dimension * dimension + id.y * dimension + id.z] - Density[(id.x - 1) * dimension * dimension + id.y * dimension + id.z];
+            }
+            if (id.y > 0 && id.y < dimension - 1)
+            {
+                yGradient = (Density[id.x * dimension * dimension + (id.y + 1) * dimension + id.z] - Density[id.x * dimension * dimension + (id.y - 1) * dimension + id.z]) / 2.0;
+            }
+            else if (id.y == 0)
+            {
+                yGradient = Density[id.x * dimension * dimension + (id.y + 1) * dimension + id.z] - Density[id.x * dimension * dimension + id.y * dimension + id.z];
+            }
+            else if (id.y == dimension - 1)
+            {
+                yGradient = Density[id.x * dimension * dimension + id.y * dimension + id.z] - Density[id.x * dimension * dimension + (id.y - 1) * dimension + id.z];
+            }
+            if (id.z > 0 && id.z < dimension - 1)
+            {
+                zGradient = (Density[id.x * dimension * dimension + id.y * dimension + id.z + 1] - Density[id.x * dimension * dimension + id.y * dimension + id.z - 1]) / 2.0;
+            }
+            else if (id.z == 0)
+            {
+                zGradient = Density[id.x * dimension * dimension + id.y * dimension + id.z + 1] - Density[id.x * dimension * dimension + id.y * dimension + id.z];
+            }
+            else if (id.z == dimension - 1)
+            {
+                zGradient = Density[id.x * dimension * dimension + id.y * dimension + id.z] - Density[id.x * dimension * dimension + id.y * dimension + id.z - 1];
+            }
+            GradientArray[(id.x * dimension * dimension + id.y * dimension + id.z) * 3] = xGradient;
+            GradientArray[(id.x * dimension * dimension + id.y * dimension + id.z) * 3 + 1] = yGradient;
+            GradientArray[(id.x * dimension * dimension + id.y * dimension + id.z) * 3 + 2] = zGradient;
+        }
+    }
+    
+
+}

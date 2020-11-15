@@ -1,0 +1,52 @@
+﻿// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel AverageSmoother
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+StructuredBuffer<float3> Edges;
+RWStructuredBuffer<float3> AveragedEdges;
+StructuredBuffer<uint> startIndexes;
+uint nbEdges;
+uint width;
+
+[numthreads(32,32,1)]
+void AverageSmoother (uint3 id : SV_DispatchThreadID)
+{
+    if (id.x < nbEdges)
+    {
+        uint length = startIndexes[id.x + 1] - startIndexes[id.x];
+        if (id.y < length)
+        {
+            if (id.y == 0 || id.y == length - 1)
+            {
+                AveragedEdges[startIndexes[id.x] + id.y] = Edges[startIndexes[id.x] + id.y];
+
+            }
+            else
+            {
+                int nbNeighbours = 0;
+                float3 averagePoint = float3(0, 0, 0);
+                for (uint i = 1; i < width / 2; i++)
+                {
+                    averagePoint += Edges[startIndexes[id.x] + id.y + i];
+                    nbNeighbours += 1;
+                    if (id.y + i == length - 1)
+                    {
+                        break;
+                    }
+                }
+                for (uint j = 1; j < width / 2; j++)
+                {
+                    averagePoint += Edges[startIndexes[id.x] + id.y - j];
+                    nbNeighbours += 1;
+                    if (id.y - j == 0)
+                    {
+                        break;
+                    }
+                }
+                averagePoint /= nbNeighbours;
+                AveragedEdges[startIndexes[id.x] + id.y] = averagePoint;
+            }
+        }
+    }
+}

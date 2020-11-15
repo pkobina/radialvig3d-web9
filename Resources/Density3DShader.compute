@@ -1,0 +1,38 @@
+﻿// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel Density3DShader
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+StructuredBuffer<int> DiscretizedGraph;
+RWStructuredBuffer<float> Density;
+StructuredBuffer<float> Kernel;
+uint dimension;
+uint kernelSize;
+
+[numthreads(10, 10, 10)]
+void Density3DShader(uint3 id : SV_DispatchThreadID)
+{
+    //to compute density on each point, the Gaussian kernel is convoluted with the graph
+    if (id.x < dimension && id.y < dimension && id.z<dimension)
+    {
+        float densityValue = 0;
+        for (uint i = 0; i < kernelSize; i++)
+        {
+            for (uint j = 0; j < kernelSize; j++)
+            {
+                for (uint k = 0; k < kernelSize; k++)
+                {
+                    if (id.x + i - kernelSize / 2 >= 0 && id.x + i - kernelSize / 2 < dimension && id.y + j - kernelSize / 2 >= 0 && id.y + j - kernelSize / 2 < dimension && id.z + k - kernelSize / 2 >= 0 && id.z + k - kernelSize / 2 < dimension)
+                    {
+                        densityValue += DiscretizedGraph[(id.x + i - kernelSize / 2) * dimension * dimension + (id.y + j - kernelSize / 2) * dimension + id.z + k - kernelSize / 2] * Kernel[i * kernelSize * kernelSize + j * kernelSize + k];
+                    }
+                }
+
+            }
+
+        }
+        Density[id.x * dimension * dimension + id.y * dimension + id.z] = densityValue;
+    }
+    
+
+}

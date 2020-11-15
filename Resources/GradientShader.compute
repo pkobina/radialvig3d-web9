@@ -1,0 +1,50 @@
+﻿// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel GradientShader
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+StructuredBuffer<int> DiscretizedGraph;
+StructuredBuffer<float> Density;
+RWStructuredBuffer<float> GradientArray;
+uint dimension;
+
+[numthreads(32,32,1)]
+void GradientShader (uint3 id : SV_DispatchThreadID)
+{
+    if (id.x < dimension && id.y < dimension)
+    {
+        if (DiscretizedGraph[id.x * dimension + id.y] != 0)
+        {
+            float xGradient = 0;
+            float yGradient = 0;
+            if (id.x > 0 && id.x < dimension - 1)
+            {
+                xGradient = (Density[(id.x + 1) * dimension + id.y] - Density[(id.x - 1) * dimension + id.y]) / 2.0;
+            }
+            else if (id.x == 0)
+            {
+                xGradient = Density[(id.x + 1) * dimension + id.y] - Density[id.x * dimension + id.y];
+            }
+            else if (id.x == dimension - 1)
+            {
+                xGradient = Density[id.x * dimension + id.y] - Density[(id.x - 1) * dimension + id.y];
+            }
+            if (id.y > 0 && id.y < dimension - 1)
+            {
+                yGradient = (Density[id.x * dimension + id.y + 1] - Density[id.x * dimension + id.y - 1]) / 2.0;
+            }
+            else if (id.y == 0)
+            {
+                yGradient = Density[id.x * dimension + id.y + 1] - Density[id.x * dimension + id.y];
+            }
+            else if (id.y == dimension - 1)
+            {
+                yGradient = Density[id.x * dimension + id.y] - Density[id.x * dimension + id.y - 1];
+            }
+            GradientArray[(id.x * dimension + id.y) * 2] = xGradient;
+            GradientArray[(id.x * dimension + id.y) * 2 + 1] = yGradient;
+        }
+    }
+    
+
+}

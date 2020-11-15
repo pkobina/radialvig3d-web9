@@ -1,0 +1,50 @@
+﻿// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel Force
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+StructuredBuffer<float3> Edges;
+StructuredBuffer<float> CompatibilityMatrix;
+RWStructuredBuffer<int3> Forces;
+
+uint nbEdges;
+uint edgeLength;
+float kp;
+float edgeMinDistance;
+
+[numthreads(10,10,10)]
+void Force (uint3 id : SV_DispatchThreadID)
+{
+    if (id.x < nbEdges && id.y>0 && id.y < edgeLength-1 && id.z<nbEdges)
+    {
+        //electrostaticForce
+        if (id.x != id.z)
+        {
+            float compatibility = CompatibilityMatrix[id.x * nbEdges + id.z];
+            if (compatibility > 0.05)
+            {
+                float3 directionVector = Edges[id.z * edgeLength + id.y] - Edges[id.x * edgeLength + id.y];
+
+                if (length(directionVector) > edgeMinDistance)
+                {
+                    float3 force = compatibility * directionVector / dot(directionVector, directionVector);
+                    //InterlockedAdd only works with int. To avoid losing precision, the forces are multiplied.
+                    //This does not have much influence since the forces end up normalized when going back to the CPU
+                    InterlockedAdd(Forces[id.x * edgeLength + id.y].x, (int) (force.x * 1000000));
+                    InterlockedAdd(Forces[id.x * edgeLength + id.y].y, (int) (force.y * 1000000));
+                    InterlockedAdd(Forces[id.x * edgeLength + id.y].z, (int) (force.z * 1000000));
+                }
+
+            }
+        }
+        //spring force
+        else 
+        {
+            float3 force = kp * (Edges[id.x * edgeLength + id.y - 1] - Edges[id.x * edgeLength + id.y]);
+            force += kp * (Edges[id.x * edgeLength + id.y + 1] - Edges[id.x * edgeLength + id.y]);
+            InterlockedAdd(Forces[id.x * edgeLength + id.y].x, (int) (force.x * 1000000));
+            InterlockedAdd(Forces[id.x * edgeLength + id.y].y, (int) (force.y * 1000000));
+            InterlockedAdd(Forces[id.x * edgeLength + id.y].z, (int) (force.z * 1000000));
+        }
+    }
+}

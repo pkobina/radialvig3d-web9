@@ -1,0 +1,36 @@
+﻿// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel DensityShader
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+StructuredBuffer<int> DiscretizedGraph;
+RWStructuredBuffer<float> Density;
+StructuredBuffer<float> Kernel;
+uint dimension;
+uint kernelSize;
+
+[numthreads(32,32,1)]
+void DensityShader (uint3 id : SV_DispatchThreadID)
+{
+    // TODO: insert actual code here!
+    
+    if (id.x < dimension && id.y < dimension)
+    {
+        float densityValue = 0;
+        for (uint i = 0; i < kernelSize; i++)
+        {
+            for (uint j = 0; j < kernelSize; j++)
+            {
+                if (id.x + i - kernelSize / 2 >= 0 && id.x + i - kernelSize / 2 < dimension && id.y + j - kernelSize / 2 >= 0 && id.y + j - kernelSize / 2 < dimension)
+                {
+                    densityValue += DiscretizedGraph[(id.x + i - kernelSize / 2) * dimension + id.y + j - kernelSize / 2] * Kernel[i * kernelSize + j];
+                }
+
+            }
+
+        }
+        Density[id.x * dimension + id.y] = densityValue;
+    }
+    
+
+}
